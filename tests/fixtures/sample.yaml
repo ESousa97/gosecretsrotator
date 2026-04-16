@@ -1,0 +1,12 @@
+app:
+  name: secrets-rotator-test
+database:
+  # Connection settings
+  host: localhost
+  port: 5432
+  credentials:
+    # This value will be replaced
+    password: "change_me"
+    user: postgres
+logging:
+  level: info # Log level
