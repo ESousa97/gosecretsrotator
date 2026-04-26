@@ -29,12 +29,12 @@ var injectDockerCmd = &cobra.Command{
 			return err
 		}
 
-		value, found := store.Secrets[dockerSecretKey]
+		sec, found := store.Secrets[dockerSecretKey]
 		if !found {
 			return fmt.Errorf("secret for '%s' not found", dockerSecretKey)
 		}
 
-		if err := docker.UpdateContainerEnv(dockerContainer, dockerEnvKey, value); err != nil {
+		if err := docker.UpdateContainerEnv(dockerContainer, dockerEnvKey, sec.Value); err != nil {
 			return err
 		}
 

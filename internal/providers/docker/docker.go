@@ -31,6 +31,15 @@ func UpdateContainerEnv(containerName, key, value string) error {
 
 	containerID := inspectJSON.ID
 
+	// Refuse to recreate compose-managed containers: doing so would orphan the
+	// container from its compose project (labels survive but the new container
+	// no longer matches the project's expected resource graph, and `docker
+	// compose down/up` would create a duplicate). Tell the user to inject into
+	// the compose .env file instead.
+	if proj, ok := inspectJSON.Config.Labels["com.docker.compose.project"]; ok {
+		return fmt.Errorf("container '%s' is managed by docker compose (project=%q); refusing to recreate it. Use `inject file` against the compose .env file and run `docker compose up -d` instead", containerName, proj)
+	}
+
 	// Update the environment variables
 	envFound := false
 	var newEnv []string

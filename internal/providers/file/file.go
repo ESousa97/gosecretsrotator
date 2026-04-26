@@ -9,6 +9,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// splitEnvComment splits a .env line into its content and trailing comment.
+// A '#' only starts a comment when it is unquoted and preceded by whitespace
+// (or starts the line). This avoids treating '#' inside a value as a comment.
+func splitEnvComment(line string) (content, comment string) {
+	inSingle, inDouble := false, false
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		switch {
+		case c == '\'' && !inDouble:
+			inSingle = !inSingle
+		case c == '"' && !inSingle:
+			inDouble = !inDouble
+		case c == '#' && !inSingle && !inDouble:
+			if i == 0 || line[i-1] == ' ' || line[i-1] == '\t' {
+				return strings.TrimRight(line[:i], " \t"), line[i:]
+			}
+		}
+	}
+	return line, ""
+}
+
 // InjectEnv updates a key in a .env file preserving comments and formatting
 func InjectEnv(filePath, key, value string) error {
 	file, err := os.Open(filePath)
@@ -27,11 +48,10 @@ func InjectEnv(filePath, key, value string) error {
 		
 		// Check if line starts with KEY=
 		if strings.HasPrefix(trimmed, key+"=") {
-			// Find if there is a comment in the same line
-			parts := strings.SplitN(line, "#", 2)
+			_, comment := splitEnvComment(line)
 			newLine := fmt.Sprintf("%s=%s", key, value)
-			if len(parts) > 1 {
-				newLine += " #" + parts[1]
+			if comment != "" {
+				newLine += " " + comment
 			}
 			lines = append(lines, newLine)
 			found = true

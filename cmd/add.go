@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/esousa97/gosecretsrotator/internal/config"
 	"github.com/esousa97/gosecretsrotator/internal/storage"
@@ -27,9 +28,17 @@ var addCmd = &cobra.Command{
 		}
 
 		if store.Secrets == nil {
-			store.Secrets = make(map[string]string)
+			store.Secrets = make(map[string]*storage.Secret)
 		}
-		store.Secrets[key] = value
+		if existing, ok := store.Secrets[key]; ok {
+			existing.Value = value
+			existing.LastRotated = time.Now().UTC()
+		} else {
+			store.Secrets[key] = &storage.Secret{
+				Value:       value,
+				LastRotated: time.Now().UTC(),
+			}
+		}
 
 		if err := store.Save(); err != nil {
 			return err

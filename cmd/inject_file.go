@@ -31,7 +31,7 @@ var injectFileCmd = &cobra.Command{
 			return err
 		}
 
-		value, found := store.Secrets[fileSecretKey]
+		sec, found := store.Secrets[fileSecretKey]
 		if !found {
 			return fmt.Errorf("secret for '%s' not found", fileSecretKey)
 		}
@@ -40,9 +40,9 @@ var injectFileCmd = &cobra.Command{
 		var errInject error
 		switch ext {
 		case ".env":
-			errInject = file.InjectEnv(filePath, fileKey, value)
+			errInject = file.InjectEnv(filePath, fileKey, sec.Value)
 		case ".yaml", ".yml":
-			errInject = file.InjectYAML(filePath, fileKey, value)
+			errInject = file.InjectYAML(filePath, fileKey, sec.Value)
 		default:
 			errInject = fmt.Errorf("unsupported file extension: %s. Use .env or .yaml", ext)
 		}

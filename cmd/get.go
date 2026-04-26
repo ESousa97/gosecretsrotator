@@ -25,12 +25,12 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		value, found := store.Secrets[key]
+		sec, found := store.Secrets[key]
 		if !found {
 			return fmt.Errorf("secret for '%s' not found", key)
 		}
 
-		fmt.Printf("Secret for '%s': %s\n", key, value)
+		fmt.Printf("Secret for '%s': %s\n", key, sec.Value)
 		return nil
 	},
 }
