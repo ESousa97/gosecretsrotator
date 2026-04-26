@@ -36,16 +36,16 @@ func InjectEnv(filePath, key, value string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var lines []string
 	found := false
 	scanner := bufio.NewScanner(file)
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Check if line starts with KEY=
 		if strings.HasPrefix(trimmed, key+"=") {
 			_, comment := splitEnvComment(line)

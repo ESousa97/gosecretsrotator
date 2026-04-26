@@ -9,8 +9,10 @@ import (
 func TestInjectEnv(t *testing.T) {
 	content := "# Config\nDB_PASS=old # pass\nOTHER=val"
 	tmpFile := "test_inject.env"
-	os.WriteFile(tmpFile, []byte(content), 0644)
-	defer os.Remove(tmpFile)
+	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+		t.Fatalf("write tmp: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	err := InjectEnv(tmpFile, "DB_PASS", "new_secret")
 	if err != nil {
@@ -31,8 +33,10 @@ func TestInjectEnv(t *testing.T) {
 func TestInjectYAML(t *testing.T) {
 	content := "db:\n  pass: old # secret\n  user: admin"
 	tmpFile := "test_inject.yaml"
-	os.WriteFile(tmpFile, []byte(content), 0644)
-	defer os.Remove(tmpFile)
+	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+		t.Fatalf("write tmp: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	err := InjectYAML(tmpFile, "pass", "new_secret")
 	if err != nil {

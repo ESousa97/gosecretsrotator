@@ -21,7 +21,7 @@ func UpdateContainerEnv(containerName, key, value string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	// Inspect the container to get its configuration by name
 	inspectJSON, err := cli.ContainerInspect(ctx, containerName)

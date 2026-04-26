@@ -60,9 +60,9 @@ func init() {
 	injectFileCmd.Flags().StringVarP(&filePath, "path", "p", "", "Path to the .env or .yaml file")
 	injectFileCmd.Flags().StringVarP(&fileKey, "key", "k", "", "Key name to update in the file")
 	injectFileCmd.Flags().StringVarP(&fileSecretKey, "secret", "s", "", "Secret key from vault")
-	injectFileCmd.MarkFlagRequired("path")
-	injectFileCmd.MarkFlagRequired("key")
-	injectFileCmd.MarkFlagRequired("secret")
+	_ = injectFileCmd.MarkFlagRequired("path")
+	_ = injectFileCmd.MarkFlagRequired("key")
+	_ = injectFileCmd.MarkFlagRequired("secret")
 
 	injectCmd.AddCommand(injectFileCmd)
 }

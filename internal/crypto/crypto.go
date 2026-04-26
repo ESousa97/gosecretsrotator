@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	salt          = "gosecretsrotator-salt-2026" // Fixed salt for simplicity in base tool
-	keyLength     = 32                         // 32 bytes for AES-256
-	pbkdf2Iter    = 10000                      // Standard PBKDF2 iterations
+	salt       = "gosecretsrotator-salt-2026" // Fixed salt for simplicity in base tool
+	keyLength  = 32                           // 32 bytes for AES-256
+	pbkdf2Iter = 10000                        // Standard PBKDF2 iterations
 )
 
 // Encrypt takes a plaintext and a master password, returning the encrypted blob
