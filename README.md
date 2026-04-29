@@ -545,19 +545,43 @@ gosecretsrotator rotate API_TOKEN
 
 ## Roadmap
 
-- [x] AES-256-GCM encrypted local vault
-- [x] Cobra CLI (`add`, `get`, `rotate`, `daemon`, `incident`, `inject`, `target`)
-- [x] Docker container env-var injection
-- [x] `.env` and `.yaml` file injection
-- [x] Per-secret rotation interval policy
-- [x] SQLite-backed history with `incident rollback`
-- [x] Prometheus metrics endpoint
-- [x] Webhook notifications on success
-- [ ] Pluggable KMS backend (AWS KMS / HashiCorp Vault transit) for the master key
-- [ ] Multi-secret atomic rotation (transactional rollback if any target fails)
-- [ ] Random salt per vault (currently fixed) + version migration
-- [ ] Kubernetes provider (Secrets / ConfigMaps)
-- [ ] OpenTelemetry traces for rotation cycles
+The project was built in five stages — all delivered.
+
+### Stage 1 — The Vault (Encryption & Storage)
+
+- [x] AES-256-GCM authenticated encryption for the local vault
+- [x] PBKDF2-SHA256 key derivation from `GOSECRETS_MASTER_PWD`
+- [x] Cobra CLI scaffolding with `add` and `get` commands
+- [x] Encrypted JSON vault with `0600` file permissions
+
+### Stage 2 — Environment Injection (Docker & Files)
+
+- [x] Docker provider: locate container by name, update env var by recreating it, preserve network endpoints
+- [x] `.env` file provider with comment- and quote-aware rewriting
+- [x] `.yaml`/`.yml` file provider using AST traversal to preserve structure and comments
+- [x] One-off `inject docker` and `inject file` subcommands
+
+### Stage 3 — The Rotation Cycle (Automation)
+
+- [x] Cryptographically secure password generator (`crypto/rand`, 74-char alphabet)
+- [x] Per-secret rotation interval policy (`rotation set --days`)
+- [x] `daemon` command with configurable check interval and graceful shutdown
+- [x] Persistent `Target` configuration applied automatically on rotation
+
+### Stage 4 — Audit & Versioning (Audit Log & Rollback)
+
+- [x] SQLite-backed history database recording every rotation attempt
+- [x] Status tracking (`success` / `failure`) with error messages for auditing
+- [x] `incident rollback --secret-name` command that restores the previous successful value
+- [x] Append-only history schema (no in-place mutation)
+
+### Stage 5 — External Integration (Webhooks & Metrics)
+
+- [x] JSON webhook POST after every successful rotation (Slack/Discord/Coolify-compatible)
+- [x] Prometheus `/metrics` endpoint exposed by the daemon
+- [x] `gosecrets_rotations_total{status}` counter for success/failure tracking
+- [x] `gosecrets_secrets_expiring_soon` gauge for upcoming expirations
+- [x] `gosecrets_last_rotation_success{secret_name}` gauge for per-secret freshness
 
 ## Contributing
 
