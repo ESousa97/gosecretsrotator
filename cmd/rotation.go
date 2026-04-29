@@ -67,7 +67,7 @@ var rotateCmd = &cobra.Command{
 		if err := store.Load(); err != nil {
 			return err
 		}
-		if err := rotation.RotateSecret(store, hdb, key); err != nil {
+		if err := rotation.RotateSecret(store, hdb, key, cfg.WebhookURL); err != nil {
 			return err
 		}
 		fmt.Printf("Rotated '%s' successfully\n", key)

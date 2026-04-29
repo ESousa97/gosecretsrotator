@@ -21,21 +21,30 @@ const DefaultPasswordLength = 32
 // IntervalDays <= 0 are skipped (manual-only).
 func DueSecrets(store *storage.Store, now time.Time) []string {
 	var out []string
+	var expiringSoon float64
 	for k, s := range store.Secrets {
 		if s == nil || s.IntervalDays <= 0 {
 			continue
 		}
 		interval := time.Duration(s.IntervalDays) * 24 * time.Hour
-		if s.LastRotated.IsZero() || now.Sub(s.LastRotated) >= interval {
+		remaining := interval
+		if !s.LastRotated.IsZero() {
+			remaining = interval - now.Sub(s.LastRotated)
+		}
+
+		if remaining <= 0 {
 			out = append(out, k)
+		} else if remaining <= 3*24*time.Hour {
+			expiringSoon++
 		}
 	}
+	SecretsExpiringSoon.Set(expiringSoon)
 	return out
 }
 
 // RotateSecret generates a new value for the given secret, applies it to all
 // configured targets, then persists the store.
-func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) error {
+func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string, webhookURL string) error {
 	sec, ok := store.Secrets[key]
 	if !ok || sec == nil {
 		return fmt.Errorf("secret '%s' not found", key)
@@ -51,6 +60,7 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 
 	newVal, err := crypto.GeneratePassword(DefaultPasswordLength)
 	if err != nil {
+		RotationsTotal.WithLabelValues("failure").Inc()
 		if err := hdb.Record(key, "", "failure", err.Error(), "rotation"); err != nil {
 			log.Printf("history record failure (rotation failure): %v", err)
 		}
@@ -66,6 +76,7 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 	}
 
 	if applyErr != nil {
+		RotationsTotal.WithLabelValues("failure").Inc()
 		if err := hdb.Record(key, newVal, "failure", applyErr.Error(), "rotation"); err != nil {
 			log.Printf("history record failure (apply failure): %v", err)
 		}
@@ -75,6 +86,7 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 	sec.Value = newVal
 	sec.LastRotated = time.Now().UTC()
 	if err := store.Save(); err != nil {
+		RotationsTotal.WithLabelValues("failure").Inc()
 		if err := hdb.Record(key, newVal, "failure", "save store: "+err.Error(), "rotation"); err != nil {
 			log.Printf("history record failure (save failure): %v", err)
 		}
@@ -89,8 +101,14 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 		log.Printf("history record failure (success): %v", err)
 	}
 
-	// Ensure we also have a record of the initial state if it's the first time
-	// But usually, we just log every successful change.
+	RotationsTotal.WithLabelValues("success").Inc()
+	LastRotationSuccess.WithLabelValues(key).Set(float64(sec.LastRotated.Unix()))
+
+	if webhookURL != "" {
+		if err := SendWebhook(webhookURL, key, "Rotation successful"); err != nil {
+			log.Printf("webhook notification failed for %q: %v", key, err)
+		}
+	}
 
 	return nil
 }

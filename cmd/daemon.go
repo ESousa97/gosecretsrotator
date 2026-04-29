@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/esousa97/gosecretsrotator/internal/config"
 	"github.com/esousa97/gosecretsrotator/internal/rotation"
 	"github.com/esousa97/gosecretsrotator/internal/storage"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +40,20 @@ var daemonCmd = &cobra.Command{
 			}
 		}()
 
+		// Start Metrics Server
+		go func() {
+			mux := http.NewServeMux()
+			mux.Handle("/metrics", promhttp.Handler())
+			srv := &http.Server{
+				Addr:    fmt.Sprintf(":%d", cfg.MetricsPort),
+				Handler: mux,
+			}
+			log.Printf("metrics server starting on :%d", cfg.MetricsPort)
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("metrics server error: %v", err)
+			}
+		}()
+
 		log.Printf("daemon starting; check interval=%s", daemonCheckInterval)
 		tick := time.NewTicker(daemonCheckInterval)
 		defer tick.Stop()
@@ -55,7 +71,7 @@ var daemonCmd = &cobra.Command{
 			}
 			for _, k := range due {
 				log.Printf("rotating %q (interval=%dd)", k, store.Secrets[k].IntervalDays)
-				if err := rotation.RotateSecret(store, hdb, k); err != nil {
+				if err := rotation.RotateSecret(store, hdb, k, cfg.WebhookURL); err != nil {
 					log.Printf("rotate %q failed: %v", k, err)
 					continue
 				}
