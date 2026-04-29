@@ -68,7 +68,8 @@ func InjectEnv(filePath, key, value string) error {
 		return err
 	}
 
-	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")+"\n"), 0644)
+	content := []byte(strings.Join(lines, "\n") + "\n")
+	return os.WriteFile(filePath, content, 0600)
 }
 
 // InjectYAML updates a key in a YAML file using AST to preserve comments
@@ -99,7 +100,7 @@ func InjectYAML(filePath, key, value string) error {
 		return err
 	}
 
-	return os.WriteFile(filePath, out, 0644)
+	return os.WriteFile(filePath, out, 0600)
 }
 
 func updateNode(node *yaml.Node, key, value string) bool {

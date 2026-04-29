@@ -93,6 +93,11 @@ var daemonCmd = &cobra.Command{
 }
 
 func init() {
-	daemonCmd.Flags().DurationVar(&daemonCheckInterval, "check-interval", time.Hour, "How often the daemon checks for expired secrets")
+	daemonCmd.Flags().DurationVar(
+		&daemonCheckInterval,
+		"check-interval",
+		time.Hour,
+		"How often the daemon checks for expired secrets",
+	)
 	rootCmd.AddCommand(daemonCmd)
 }

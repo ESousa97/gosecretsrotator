@@ -64,12 +64,22 @@ func (h *HistoryDB) Record(name, value, status, errMsg, operation string) error 
 }
 
 func (h *HistoryDB) GetLastSuccessful(name string) (*HistoryEntry, error) {
-	row := h.db.QueryRow(
-		"SELECT id, secret_name, value, rotated_at, status, error_msg, operation FROM secret_history WHERE secret_name = ? AND status = 'success' ORDER BY rotated_at DESC LIMIT 1 OFFSET 1",
-		name,
-	)
+	query := `
+		SELECT id, secret_name, value, rotated_at, status, error_msg, operation 
+		FROM secret_history 
+		WHERE secret_name = ? AND status = 'success' 
+		ORDER BY rotated_at DESC LIMIT 1 OFFSET 1`
+	row := h.db.QueryRow(query, name)
 	var entry HistoryEntry
-	err := row.Scan(&entry.ID, &entry.SecretName, &entry.Value, &entry.RotatedAt, &entry.Status, &entry.ErrorMsg, &entry.Operation)
+	err := row.Scan(
+		&entry.ID,
+		&entry.SecretName,
+		&entry.Value,
+		&entry.RotatedAt,
+		&entry.Status,
+		&entry.ErrorMsg,
+		&entry.Operation,
+	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("no previous version found for %s", name)
 	}

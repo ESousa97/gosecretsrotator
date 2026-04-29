@@ -44,9 +44,27 @@ var injectDockerCmd = &cobra.Command{
 }
 
 func init() {
-	injectDockerCmd.Flags().StringVarP(&dockerContainer, "container", "c", "", "Target Docker container name")
-	injectDockerCmd.Flags().StringVarP(&dockerEnvKey, "key", "k", "", "Environment variable name to set inside the container")
-	injectDockerCmd.Flags().StringVarP(&dockerSecretKey, "secret", "s", "", "Secret key from vault")
+	injectDockerCmd.Flags().StringVarP(
+		&dockerContainer,
+		"container",
+		"c",
+		"",
+		"Target Docker container name",
+	)
+	injectDockerCmd.Flags().StringVarP(
+		&dockerEnvKey,
+		"key",
+		"k",
+		"",
+		"Environment variable name to set inside the container",
+	)
+	injectDockerCmd.Flags().StringVarP(
+		&dockerSecretKey,
+		"secret",
+		"s",
+		"",
+		"Secret key from vault",
+	)
 	_ = injectDockerCmd.MarkFlagRequired("container")
 	_ = injectDockerCmd.MarkFlagRequired("key")
 	_ = injectDockerCmd.MarkFlagRequired("secret")

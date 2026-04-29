@@ -76,7 +76,13 @@ var rotateCmd = &cobra.Command{
 }
 
 func init() {
-	rotationSetCmd.Flags().IntVarP(&rotationIntervalDays, "days", "d", 30, "Rotation interval in days (0 disables auto rotation)")
+	rotationSetCmd.Flags().IntVarP(
+		&rotationIntervalDays,
+		"days",
+		"d",
+		30,
+		"Rotation interval in days (0 disables auto rotation)",
+	)
 	rotationCmd.AddCommand(rotationSetCmd)
 	rootCmd.AddCommand(rotationCmd)
 	rootCmd.AddCommand(rotateCmd)
