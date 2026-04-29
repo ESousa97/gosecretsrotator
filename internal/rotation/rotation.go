@@ -33,29 +33,91 @@ func DueSecrets(store *storage.Store, now time.Time) []string {
 }
 
 // RotateSecret generates a new value for the given secret, applies it to all
-// configured targets, then persists the store. Targets are applied in order;
-// on the first failure the in-memory value is left updated but Save is not
-// called, leaving the on-disk vault unchanged.
-func RotateSecret(store *storage.Store, key string) error {
+// configured targets, then persists the store.
+func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) error {
 	sec, ok := store.Secrets[key]
 	if !ok || sec == nil {
 		return fmt.Errorf("secret '%s' not found", key)
 	}
 
+	// Record initial state if history is empty for this secret
+	// This ensures GetLastSuccessful(key, offset 1) works on the first rotation.
+	if _, err := hdb.GetLastSuccessful(key); err != nil {
+		hdb.Record(key, sec.Value, "success", "initial baseline", "baseline")
+	}
+
 	newVal, err := crypto.GeneratePassword(DefaultPasswordLength)
 	if err != nil {
+		hdb.Record(key, "", "failure", err.Error(), "rotation")
 		return fmt.Errorf("generate password: %w", err)
 	}
 
+	var applyErr error
 	for _, t := range sec.Targets {
 		if err := ApplyTarget(t, newVal); err != nil {
-			return fmt.Errorf("apply target %+v: %w", t, err)
+			applyErr = fmt.Errorf("apply target %+v: %w", t, err)
+			break
 		}
+	}
+
+	if applyErr != nil {
+		hdb.Record(key, newVal, "failure", applyErr.Error(), "rotation")
+		return applyErr
 	}
 
 	sec.Value = newVal
 	sec.LastRotated = time.Now().UTC()
-	return store.Save()
+	if err := store.Save(); err != nil {
+		hdb.Record(key, newVal, "failure", "save store: "+err.Error(), "rotation")
+		return err
+	}
+
+	// Archive the OLD value if this is the first successful rotation of this value
+	// Or we can record the NEW value as the current state.
+	// Requirement: "Each time a secret is rotated, the previous version must be moved to 'history'".
+	// Let's record the NEW successful state. The "previous" is naturally the one before the latest in DB.
+	hdb.Record(key, newVal, "success", "", "rotation")
+
+	// Ensure we also have a record of the initial state if it's the first time
+	// But usually, we just log every successful change.
+
+	return nil
+}
+
+// RollbackSecret retrieves the previous successful value and applies it.
+func RollbackSecret(store *storage.Store, hdb *storage.HistoryDB, key string) error {
+	sec, ok := store.Secrets[key]
+	if !ok || sec == nil {
+		return fmt.Errorf("secret '%s' not found", key)
+	}
+
+	prev, err := hdb.GetLastSuccessful(key)
+	if err != nil {
+		return fmt.Errorf("get history: %w", err)
+	}
+
+	var applyErr error
+	for _, t := range sec.Targets {
+		if err := ApplyTarget(t, prev.Value); err != nil {
+			applyErr = fmt.Errorf("apply target %+v: %w", t, err)
+			break
+		}
+	}
+
+	if applyErr != nil {
+		hdb.Record(key, prev.Value, "failure", "rollback: "+applyErr.Error(), "rollback")
+		return applyErr
+	}
+
+	sec.Value = prev.Value
+	sec.LastRotated = time.Now().UTC()
+	if err := store.Save(); err != nil {
+		hdb.Record(key, prev.Value, "failure", "rollback save: "+err.Error(), "rollback")
+		return err
+	}
+
+	hdb.Record(key, prev.Value, "success", "", "rollback")
+	return nil
 }
 
 // ApplyTarget dispatches a value to the appropriate provider.

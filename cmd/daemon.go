@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
@@ -27,6 +28,12 @@ var daemonCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer stop()
 
+		hdb, err := storage.NewHistoryDB("history.db")
+		if err != nil {
+			return fmt.Errorf("init history db: %w", err)
+		}
+		defer hdb.Close()
+
 		log.Printf("daemon starting; check interval=%s", daemonCheckInterval)
 		tick := time.NewTicker(daemonCheckInterval)
 		defer tick.Stop()
@@ -37,13 +44,14 @@ var daemonCmd = &cobra.Command{
 				log.Printf("load vault: %v", err)
 				return
 			}
+
 			due := rotation.DueSecrets(store, time.Now().UTC())
 			if len(due) == 0 {
 				return
 			}
 			for _, k := range due {
 				log.Printf("rotating %q (interval=%dd)", k, store.Secrets[k].IntervalDays)
-				if err := rotation.RotateSecret(store, k); err != nil {
+				if err := rotation.RotateSecret(store, hdb, k); err != nil {
 					log.Printf("rotate %q failed: %v", k, err)
 					continue
 				}

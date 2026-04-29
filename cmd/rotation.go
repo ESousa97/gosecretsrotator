@@ -53,11 +53,17 @@ var rotateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		hdb, err := storage.NewHistoryDB("history.db")
+		if err != nil {
+			return err
+		}
+		defer hdb.Close()
+
 		store := storage.NewStore("secrets.json", cfg.MasterPassword)
 		if err := store.Load(); err != nil {
 			return err
 		}
-		if err := rotation.RotateSecret(store, key); err != nil {
+		if err := rotation.RotateSecret(store, hdb, key); err != nil {
 			return err
 		}
 		fmt.Printf("Rotated '%s' successfully\n", key)
