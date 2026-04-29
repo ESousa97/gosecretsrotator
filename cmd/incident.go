@@ -33,7 +33,11 @@ var rollbackCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer hdb.Close()
+		defer func() {
+			if err := hdb.Close(); err != nil {
+				fmt.Printf("failed to close history db: %v\n", err)
+			}
+		}()
 
 		store := storage.NewStore("secrets.json", cfg.MasterPassword)
 		if err := store.Load(); err != nil {

@@ -32,7 +32,11 @@ var daemonCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("init history db: %w", err)
 		}
-		defer hdb.Close()
+		defer func() {
+			if err := hdb.Close(); err != nil {
+				log.Printf("failed to close history db: %v", err)
+			}
+		}()
 
 		log.Printf("daemon starting; check interval=%s", daemonCheckInterval)
 		tick := time.NewTicker(daemonCheckInterval)

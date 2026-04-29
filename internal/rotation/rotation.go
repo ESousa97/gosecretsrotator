@@ -2,6 +2,7 @@ package rotation
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -43,12 +44,16 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 	// Record initial state if history is empty for this secret
 	// This ensures GetLastSuccessful(key, offset 1) works on the first rotation.
 	if _, err := hdb.GetLastSuccessful(key); err != nil {
-		hdb.Record(key, sec.Value, "success", "initial baseline", "baseline")
+		if err := hdb.Record(key, sec.Value, "success", "initial baseline", "baseline"); err != nil {
+			log.Printf("history record failure (baseline): %v", err)
+		}
 	}
 
 	newVal, err := crypto.GeneratePassword(DefaultPasswordLength)
 	if err != nil {
-		hdb.Record(key, "", "failure", err.Error(), "rotation")
+		if err := hdb.Record(key, "", "failure", err.Error(), "rotation"); err != nil {
+			log.Printf("history record failure (rotation failure): %v", err)
+		}
 		return fmt.Errorf("generate password: %w", err)
 	}
 
@@ -61,14 +66,18 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 	}
 
 	if applyErr != nil {
-		hdb.Record(key, newVal, "failure", applyErr.Error(), "rotation")
+		if err := hdb.Record(key, newVal, "failure", applyErr.Error(), "rotation"); err != nil {
+			log.Printf("history record failure (apply failure): %v", err)
+		}
 		return applyErr
 	}
 
 	sec.Value = newVal
 	sec.LastRotated = time.Now().UTC()
 	if err := store.Save(); err != nil {
-		hdb.Record(key, newVal, "failure", "save store: "+err.Error(), "rotation")
+		if err := hdb.Record(key, newVal, "failure", "save store: "+err.Error(), "rotation"); err != nil {
+			log.Printf("history record failure (save failure): %v", err)
+		}
 		return err
 	}
 
@@ -76,7 +85,9 @@ func RotateSecret(store *storage.Store, hdb *storage.HistoryDB, key string) erro
 	// Or we can record the NEW value as the current state.
 	// Requirement: "Each time a secret is rotated, the previous version must be moved to 'history'".
 	// Let's record the NEW successful state. The "previous" is naturally the one before the latest in DB.
-	hdb.Record(key, newVal, "success", "", "rotation")
+	if err := hdb.Record(key, newVal, "success", "", "rotation"); err != nil {
+		log.Printf("history record failure (success): %v", err)
+	}
 
 	// Ensure we also have a record of the initial state if it's the first time
 	// But usually, we just log every successful change.
@@ -105,18 +116,24 @@ func RollbackSecret(store *storage.Store, hdb *storage.HistoryDB, key string) er
 	}
 
 	if applyErr != nil {
-		hdb.Record(key, prev.Value, "failure", "rollback: "+applyErr.Error(), "rollback")
+		if err := hdb.Record(key, prev.Value, "failure", "rollback: "+applyErr.Error(), "rollback"); err != nil {
+			log.Printf("history record failure (rollback apply failure): %v", err)
+		}
 		return applyErr
 	}
 
 	sec.Value = prev.Value
 	sec.LastRotated = time.Now().UTC()
 	if err := store.Save(); err != nil {
-		hdb.Record(key, prev.Value, "failure", "rollback save: "+err.Error(), "rollback")
+		if err := hdb.Record(key, prev.Value, "failure", "rollback save: "+err.Error(), "rollback"); err != nil {
+			log.Printf("history record failure (rollback save failure): %v", err)
+		}
 		return err
 	}
 
-	hdb.Record(key, prev.Value, "success", "", "rollback")
+	if err := hdb.Record(key, prev.Value, "success", "", "rollback"); err != nil {
+		log.Printf("history record failure (rollback success): %v", err)
+	}
 	return nil
 }
 
