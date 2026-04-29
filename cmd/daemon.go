@@ -45,8 +45,9 @@ var daemonCmd = &cobra.Command{
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", promhttp.Handler())
 			srv := &http.Server{
-				Addr:    fmt.Sprintf(":%d", cfg.MetricsPort),
-				Handler: mux,
+				Addr:              fmt.Sprintf(":%d", cfg.MetricsPort),
+				Handler:           mux,
+				ReadHeaderTimeout: 5 * time.Second,
 			}
 			log.Printf("metrics server starting on :%d", cfg.MetricsPort)
 			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

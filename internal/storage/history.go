@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	// Register sqlite3 driver for database/sql
 	_ "github.com/mattn/go-sqlite3"
 )
 

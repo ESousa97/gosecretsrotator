@@ -15,9 +15,9 @@ func GeneratePassword(length int) (string, error) {
 		return "", fmt.Errorf("password length must be > 0")
 	}
 	out := make([]byte, length)
-	max := big.NewInt(int64(len(passwordAlphabet)))
+	alphabetSize := big.NewInt(int64(len(passwordAlphabet)))
 	for i := range out {
-		n, err := rand.Int(rand.Reader, max)
+		n, err := rand.Int(rand.Reader, alphabetSize)
 		if err != nil {
 			return "", fmt.Errorf("rand failure: %w", err)
 		}
