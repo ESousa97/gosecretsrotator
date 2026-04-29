@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -21,7 +22,9 @@ func LoadConfig() (*Config, error) {
 
 	metricsPort := 2112
 	if portStr := os.Getenv("GOSECRETS_METRICS_PORT"); portStr != "" {
-		fmt.Sscanf(portStr, "%d", &metricsPort)
+		if _, err := fmt.Sscanf(portStr, "%d", &metricsPort); err != nil {
+			log.Printf("invalid GOSECRETS_METRICS_PORT %q, using default %d: %v", portStr, metricsPort, err)
+		}
 	}
 
 	return &Config{
