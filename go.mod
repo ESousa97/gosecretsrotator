@@ -3,7 +3,7 @@ module github.com/esousa97/gosecretsrotator
 go 1.25.0
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.42
+	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 	github.com/prometheus/client_golang v1.23.2
